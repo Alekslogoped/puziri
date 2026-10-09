@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id), config = window.GAME_CONFIG;
-  const rulesText = 'Найди слова, которые можно назвать одним общим словом. Перетащи слово на другой пузырь или нажми на два пузыря по очереди. Добавляй подходящие слова, пока не соберёшь группу. Назови её! Пузырь с названием поднимется вверх. Собери все группы!';
+  const rulesText = 'Найди слова, которые можно назвать одним общим словом. Возьми пузырь и перетащи его на другой пузырь. Можно двигать и подбрасывать пузыри. Добавляй подходящие слова, пока не соберёшь группу. Назови её! Пузырь с названием поднимется вверх. Собери все группы!';
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   function validate(c) {
     if (!c || !Array.isArray(c.groups) || c.groups.length < 2 || c.groups.length > 8) throw Error('Нужно задать от 2 до 8 групп.');
@@ -36,8 +36,32 @@
   const shuffle = a => { for (let i=a.length-1;i>0;i--) {const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; };
   function later(fn, ms) { const token=generation; const id=setTimeout(() => { timers.delete(id); if(token===generation) fn(); },ms); timers.add(id); }
   function clearEffects() { generation++; timers.forEach(clearTimeout); timers.clear(); departures.forEach(el=>el.remove()); departures.clear(); cancelGesture(); hintIds=[]; $('bubbles').querySelectorAll('.merge-ring').forEach(el=>el.remove()); }
-  function radius(n) { return compact ? [0,52,62,70,78][n] : [0,66,80,94,108][n]; }
-  function bubble(g,w) { return {id:`b${++seq}`, groupId:g,wordIds:w,x:0,y:0,vx:0,vy:0,r:radius(w.length),locked:false}; }
+  const measureContext=document.createElement('canvas').getContext('2d');
+  function textWidth(text,size) { measureContext.font=`700 ${size}px Arial`;return measureContext.measureText(text).width; }
+  function labels(b,category=false) {
+    const g=groupMap.get(b.groupId);
+    return category?[g.title]:g.words.filter(w=>b.wordIds.includes(w.id)).map(w=>w.text);
+  }
+  function radius(n,words=[],category=false) {
+    const font=compact?(category?20:18):(n>1&&!category?24:28);
+    const longest=Math.max(0,...words.map(text=>textWidth(text,font)));
+    const base=compact?[0,68,76,82,90][category?4:n]:[0,90,104,116,126][category?4:n];
+    // A horizontal safety margin also keeps the outer partial rows inside the circle.
+    const required=(longest+36)/(n>1&&!category?1.7:2);
+    return Math.min(compact?Math.max(52,(width-24)/2):(n===1&&!category?100:132),Math.ceil(Math.max(base,required)));
+  }
+  function sizeBubble(b,category=false) {b.r=radius(b.wordIds.length,labels(b,category),category);}
+  function gridMetrics() {
+    const maxR=Math.max(0,...config.groups.map(g=>radius(3,g.words.map(w=>w.text))));
+    const columns=compact?(width>=maxR*4+24?2:1):7;
+    return {columns,step:compact?maxR*2+18:208};
+  }
+  function placeBubble(b,i,falling=false) {
+    const {columns,step}=gridMetrics();
+    b.x=width*(i%columns+.5)/columns;
+    b.y=compact?100+Math.floor(i/columns)*step:falling?b.r+12+Math.floor(i/columns)*step:height-110-Math.floor(i/columns)*step;
+  }
+  function bubble(g,w) { return {id:`b${++seq}`, groupId:g,wordIds:w,x:0,y:0,vx:0,vy:0,r:radius(w.length,groupMap.get(g).words.filter(word=>w.includes(word.id)).map(word=>word.text)),locked:false}; }
   function announce(text) { $('message').textContent=text; }
   function beep(kind) {
     if(!sound) return;
@@ -62,14 +86,13 @@
       state.reserve.shift(); incoming.push(...g.words.map(w=>bubble(g.id,[w.id])));
     }
     shuffle(incoming);
-    incoming.forEach((b,i)=>{
-      if(compact){ b.x=width*(i%2? .75:.25); b.y=initial? 100+Math.floor(i/2)*155:70+Math.floor(i/2)*155; }
-      else { b.x=92+(i%8)*180; b.y=initial?height-78-Math.floor(i/8)*145:80+Math.floor(i/8)*145; }
-    });
-    state.live.push(...incoming); updateFieldHeight(); settle(60); render(); invariant();
+    state.live.push(...incoming);updateFieldHeight();
+    incoming.forEach((b,i)=>placeBubble(b,i,!initial));
+    settle(80);render();invariant();
   }
   function updateFieldHeight() {
-    height=compact?Math.max(380,100+Math.ceil(Math.max(state?.live.length||0,departures.size)/2)*165):652;
+    const {columns,step}=gridMetrics();
+    height=compact?Math.max(380,110+Math.ceil(Math.max(state?.live.length||0,departures.size)/columns)*step):652;
     $('field').style.height=`${height}px`;
   }
   function bounds(b) { b.x=Math.max(b.r+5,Math.min(width-b.r-5,b.x));b.y=Math.max(b.r+5,Math.min(height-b.r-5,b.y)); }
@@ -78,10 +101,13 @@
     const live=state.live;
     for(const b of live) {
       if(gesture?.source===b.id) continue;
-      if(!compact && (!reduced.matches || force)) { b.vy+=180*dt;b.vx*=Math.exp(-3*dt);b.vy*=Math.exp(-3*dt);b.x+=b.vx*dt;b.y+=b.vy*dt; }
-      const bottom=height-b.r-5;if(b.y>bottom){b.y=bottom;b.vy=-Math.abs(b.vy)*.12;}bounds(b);
+      if(!reduced.matches || force){if(!compact)b.vy+=180*dt;b.vx*=Math.exp(-2.4*dt);b.vy*=Math.exp(-2.4*dt);b.x+=b.vx*dt;b.y+=b.vy*dt;}
+      if(b.x<b.r+5||b.x>width-b.r-5)b.vx=-b.vx*.3;
+      if(b.y<b.r+5)b.vy=Math.abs(b.vy)*.3;
+      const bottom=height-b.r-5;if(b.y>bottom){b.y=bottom;b.vy=-Math.abs(b.vy)*.22;}bounds(b);
     }
     for(let k=0;k<8;k++) for(let i=0;i<live.length;i++) for(let j=i+1;j<live.length;j++) {
+      if(gesture?.drag&&(live[i].id===gesture.source||live[j].id===gesture.source))continue;
       const a=live[i],b=live[j],dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy),need=a.r+b.r+8;
       if(dist<need) {
         const nx=dist>0.01?dx/dist:1,ny=dist>0.01?dy/dist:0,shift=(need-dist)*.51;
@@ -97,7 +123,14 @@
   // these same displayed centers so a moving bubble stays under the pointer.
   function position(b,el,dt=0) {
     if(!el)return;
-    el.style.width=el.style.height=`${b.r*2}px`;
+    const key=`${b.r}:${compact}:${el.classList.contains('category')}`;
+    if(el._sizeKey!==key){
+      el._sizeKey=key;el.style.width=el.style.height=`${b.r*2}px`;
+      const words=labels(b,el.classList.contains('category')),longest=Math.max(...words.map(t=>textWidth(t,1)));
+      const desired=compact?(el.classList.contains('category')?20:18):(b.wordIds.length>1&&!el.classList.contains('category')?24:28);
+      const available=b.r*2*(b.wordIds.length>1&&!el.classList.contains('category')?.82:.88)-22;
+      el.style.fontSize=`${Math.min(desired,Math.floor(available/longest))}px`;
+    }
     const visual=el._visualPosition ||= {x:b.x,y:b.y};
     if(reduced.matches || gesture?.source===b.id){visual.x=b.x;visual.y=b.y;}
     else if(dt>0){const blend=1-Math.exp(-18*dt);visual.x+=(b.x-visual.x)*blend;visual.y+=(b.y-visual.y)*blend;}
@@ -165,7 +198,7 @@
     state.live=state.live.filter(x=>x.id!==a.id&&x.id!==b.id);beep('success');mergeGlow(next);
     if(ids.length===g.words.length){
       state.completed.push(g.id);state.completedWords.push(...ids);
-      next.r=compact?78:108;bounds(next);state.flights.push(copy(next));launchDeparture(next);
+      sizeBubble(next,true);bounds(next);state.flights.push(copy(next));launchDeparture(next);
       render();$('progress').focus({preventScroll:true});
     }else{
       next.locked=true;state.live.push(next);if(compact||reduced.matches)settle(30);render();
@@ -190,28 +223,45 @@
     return state.live.filter(b=>b.id!==except&&!b.locked&&distance(b)<=b.r).sort((a,b)=>distance(a)-distance(b))[0];
   }
   function beginGesture(e,id) {
-    if(e.button!==0 || gesture || modalKind || state.status!=='playing')return;
+    if(e.button!==0||gesture||modalKind||state.status!=='playing')return;
     const b=state.live.find(b=>b.id===id);if(!b||b.locked)return;
-    const visual=elements.get(id)?._visualPosition;if(visual){b.x=visual.x;b.y=visual.y;b.vx=0;b.vy=0;}
-    gesture={source:id,pointer:e.pointerId,startX:e.clientX,startY:e.clientY,drag:false,el:e.currentTarget};
-    e.currentTarget.setPointerCapture(e.pointerId);e.preventDefault();
+    const visual=elements.get(id)?._visualPosition;if(visual){b.x=visual.x;b.y=visual.y;}
+    const p=coords(e);selected=null;b.vx=b.vy=0;
+    gesture={source:id,pointer:e.pointerId,startX:e.clientX,startY:e.clientY,drag:false,el:e.currentTarget,
+      originX:b.x,originY:b.y,offsetX:p.x-b.x,offsetY:p.y-b.y,lastX:b.x,lastY:b.y,lastTime:e.timeStamp,vx:0,vy:0};
+    e.currentTarget.setPointerCapture(e.pointerId);e.preventDefault();render();
+  }
+  function dragTarget(b) {
+    const distance=other=>{const p=elements.get(other.id)?._visualPosition||other;return Math.hypot(b.x-p.x,b.y-p.y);};
+    return state.live.filter(other=>other.id!==b.id&&!other.locked&&distance(other)<other.r+b.r*.45).sort((a,c)=>distance(a)-distance(c))[0];
   }
   function moveGesture(e) {
     if(!gesture||gesture.pointer!==e.pointerId)return;
     if(Math.hypot(e.clientX-gesture.startX,e.clientY-gesture.startY)>6)gesture.drag=true;
     if(!gesture.drag)return;
     const b=state.live.find(b=>b.id===gesture.source);if(!b){cancelGesture();return;}
-    elements.get(b.id)?.classList.add('source');const p=coords(e),ghost=$('ghost');ghost.hidden=false;
-    ghost.textContent=groupMap.get(b.groupId).words.filter(w=>b.wordIds.includes(w.id)).map(w=>w.text).join('\n');ghost.style.left=`${p.x}px`;ghost.style.top=`${p.y}px`;
-    const target=hit(p,b.id);elements.forEach((el,id)=>el.classList.toggle('target',id===target?.id));
+    const p=coords(e);b.x=p.x-gesture.offsetX;b.y=p.y-gesture.offsetY;bounds(b);
+    const dt=Math.max(.008,(e.timeStamp-gesture.lastTime)/1000);
+    gesture.vx=Math.max(-1200,Math.min(1200,(b.x-gesture.lastX)/dt));
+    gesture.vy=Math.max(-1200,Math.min(1200,(b.y-gesture.lastY)/dt));
+    gesture.lastX=b.x;gesture.lastY=b.y;gesture.lastTime=e.timeStamp;
+    const el=elements.get(b.id);el?.classList.add('dragging');position(b,el);
+    const target=dragTarget(b);elements.forEach((element,id)=>element.classList.toggle('target',id===target?.id));
+    e.preventDefault();
   }
   function endGesture(e) {
     if(!gesture||gesture.pointer!==e.pointerId)return;
-    const {source,drag}=gesture,target=drag?hit(coords(e),source):null;cancelGesture();
-    if(drag){selected=null;if(target)merge(source,target.id);else {announce('Выбери два подходящих пузыря');render();}}else choose(source);
+    const g=gesture,b=state.live.find(b=>b.id===g.source),target=g.drag&&b?dragTarget(b):null;
+    cancelGesture(false);
+    if(!b)return;
+    if(target){merge(b.id,target.id);}
+    else if(g.drag){const fresh=e.timeStamp-g.lastTime<100;b.vx=!reduced.matches&&fresh?g.vx:0;b.vy=!reduced.matches&&fresh?g.vy:0;announce('Перетащи подходящий пузырь на другой');}
+    // Pointer taps do not select or combine; keyboard activation remains accessible.
+    render();
   }
-  function cancelGesture() {
-    const old=gesture;gesture=null;$('ghost').hidden=true;elements.forEach(el=>el.classList.remove('source','target'));
+  function cancelGesture(restore=true) {
+    const old=gesture;gesture=null;$('ghost').hidden=true;elements.forEach(el=>el.classList.remove('source','target','dragging'));
+    if(old){const b=state?.live.find(b=>b.id===old.source);if(b&&restore!==false){b.x=old.originX;b.y=old.originY;b.vx=b.vy=0;position(b,elements.get(b.id));}}
     if(old?.el.hasPointerCapture(old.pointer))old.el.releasePointerCapture(old.pointer);
   }
   function hint() {
@@ -223,12 +273,12 @@
   function undo() {
     if(!history.length)return;clearEffects();state=history.pop();state.live.forEach(b=>b.locked=false);state.status='playing';selected=null;closeModal();updateFieldHeight();
     const layout=state.layout;
-    state.live.forEach((b,i)=>{b.r=radius(b.wordIds.length);if(layout && layout.compact!==compact){b.x=compact?width*(i%2?.75:.25):92+(i%8)*180;b.y=compact?100+Math.floor(i/2)*165:height-78-Math.floor(i/8)*160;}else if(compact && layout)b.x=b.x*width/layout.width;bounds(b);});
-    state.flights.forEach(b=>{b.r=compact?78:108;bounds(b);launchDeparture(b);});render();invariant();announce('Последний ход отменён');
+    state.live.forEach((b,i)=>{sizeBubble(b);if(layout && layout.compact!==compact){placeBubble(b,i);}else if(compact && layout)b.x=b.x*width/layout.width;bounds(b);});
+    state.flights.forEach(b=>{sizeBubble(b,true);bounds(b);launchDeparture(b);});render();invariant();announce('Последний ход отменён');
   }
   function restart() {
     clearEffects();history=[];selected=null;state={status:'playing',live:[],reserve:config.groups.map(g=>g.id),completed:[],completedWords:[],flights:[],moves:config.moveLimit,successes:0};
-    closeModal();fillReserve(true);announce('Выбери два подходящих пузыря');render();
+    closeModal();fillReserve(true);announce('Перетащи подходящий пузырь на другой');render();
   }
   function collectedList(all=false) {
     const ul=document.createElement('ul');const groups=all?config.groups:config.groups.filter(g=>state.completed.includes(g.id));
@@ -255,7 +305,7 @@
     if(compact){width=rect.width-28;$('scene').style.transform='none';}
     else{width=1472;const scale=Math.min(rect.width/1600,rect.height/900);$('scene').style.transform=`scale(${scale})`;$('scene').style.left=`${(rect.width-1600*scale)/2}px`;$('scene').style.top=`${(rect.height-900*scale)/2}px`;}
     if(!state)return;
-    updateFieldHeight();state.live.forEach((b,i)=>{b.r=radius(b.wordIds.length);if(was!==compact){b.x=compact?width*(i%2?.75:.25):92+(i%8)*180;b.y=compact?100+Math.floor(i/2)*165:height-78-Math.floor(i/8)*160;}else if(compact)b.x=Math.min(width-b.r-5,b.x);bounds(b);});settle(80);elements.forEach(el=>delete el._visualPosition);render();
+    state.live.forEach(b=>sizeBubble(b));updateFieldHeight();state.live.forEach((b,i)=>{if(was!==compact||compact)placeBubble(b,i);bounds(b);});settle(80);elements.forEach(el=>delete el._visualPosition);render();
   }
   $('undo').onclick=undo;$('hint').onclick=hint;$('restart').onclick=restart;
   $('rules').onclick=()=>showModal('rules');$('progress').onclick=()=>showModal('collected');
@@ -278,7 +328,7 @@
   function frame(t){
     const dt=Math.min(last?(t-last)/1000:0,.033);last=t;
     if(!document.hidden){
-      if(!compact&&!reduced.matches&&!modalKind){
+      if(!reduced.matches&&!modalKind){
         accumulator+=dt;const step=1/120;
         while(accumulator>=step){physics(step);accumulator-=step;}
       }else accumulator=0;
