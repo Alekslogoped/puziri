@@ -32,6 +32,41 @@
   let compact = false, width = 1472, height = 652, seq = 0, last = 0, accumulator = 0, hintIds = [], hintUntil = 0;
   let timers = new Set(), generation = 0, returnFocus = null, modalKind = '', started = false;
   const elements = new Map(), departures = new Map();
+  // Decorative fish are independent of words, physics and move history.
+  const fish=[];
+  function createFish() {
+    const palette=['#ffbd72','#83e6e2','#ffc0d8','#c2b1ff','#ffe798','#79d5ff'];
+    palette.forEach((color,i)=>{
+      const el=document.createElement('div');el.className='fish';
+      el.style.setProperty('--fish-color',color);el.style.setProperty('--fin-duration',`${.65+i*.09}s`);
+      el.style.setProperty('--fin-delay',`${-i*.21}s`);el.style.width=`${54+i%3*10}px`;
+      el.innerHTML=`<div class="fish-facing"><svg viewBox="0 0 120 64" focusable="false" aria-hidden="true">
+        <g class="fish-body">
+          <path class="fish-dorsal" d="M42 23 Q51 4 73 13 L80 23Z"/>
+          <g class="fish-rear"><path class="fish-tail" d="M34 32 Q17 17 5 13 Q9 31 5 51 Q20 47 34 32Z"/>
+          <path class="fish-shape" d="M28 32 Q44 12 67 15 Q97 15 108 32 Q97 51 68 50 Q42 50 28 32Z"/></g>
+          <path class="fish-belly" d="M35 36 Q68 52 102 35 Q87 48 66 47 Q44 47 35 36Z"/>
+          <path class="fish-glint" d="M46 24 Q66 14 87 24"/>
+          <path class="fish-fin" d="M67 33 Q50 35 57 47 Q68 43 73 34Z"/>
+          <path class="fish-gill" d="M85 27 Q81 32 85 38"/>
+          <circle cx="94" cy="27" r="4" fill="#123a5c"/><circle cx="95" cy="25.8" r="1.5" fill="white"/>
+          <path d="M103 35 Q106 37 109 34" fill="none" stroke="#123a5c" stroke-width="1.4" stroke-linecap="round"/>
+        </g></svg></div>`;
+      $('fish-layer').append(el);
+      fish.push({el,face:el.firstElementChild,phase:i*1.13,time:0,period:38+i*5,lane:.18+i*.055});
+    });
+    updateFish(0);
+  }
+  function updateFish(dt) {
+    fish.forEach(f=>{
+      if(!reduced.matches&&!modalKind)f.time+=dt;
+      const phase=f.phase+f.time*Math.PI*2/f.period;
+      const x=36+(width-100)*(.5+.5*Math.sin(phase));
+      const y=height*f.lane+Math.sin(phase*1.8+f.phase)*12;
+      f.el.style.transform=`translate3d(${x}px,${y}px,0)`;
+      f.face.style.transform=`scaleX(${Math.cos(phase)>=0?1:-1})`;
+    });
+  }
   const copy = value => JSON.parse(JSON.stringify(value));
   const shuffle = a => { for (let i=a.length-1;i>0;i--) {const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; };
   function later(fn, ms) { const token=generation; const id=setTimeout(() => { timers.delete(id); if(token===generation) fn(); },ms); timers.add(id); }
@@ -324,7 +359,7 @@
   $('field').addEventListener('pointerdown',e=>{if(!e.target.closest('.bubble')){selected=null;render();}});
   document.addEventListener('visibilitychange',()=>{cancelGesture();last=0;accumulator=0;});window.addEventListener('blur',cancelGesture);
   $('title').textContent=config.title;document.title=config.title;
-  resize();restart();showModal('rules');new ResizeObserver(resize).observe($('viewport'));
+  resize();restart();createFish();showModal('rules');new ResizeObserver(resize).observe($('viewport'));
   function frame(t){
     const dt=Math.min(last?(t-last)/1000:0,.033);last=t;
     if(!document.hidden){
@@ -332,6 +367,7 @@
         accumulator+=dt;const step=1/120;
         while(accumulator>=step){physics(step);accumulator-=step;}
       }else accumulator=0;
+      updateFish(dt);$('fish-layer').classList.toggle('paused',Boolean(modalKind));
       for(const b of state.live)position(b,elements.get(b.id),dt);
       if(hintIds.length&&t>hintUntil){hintIds=[];render();}
     }

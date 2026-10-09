@@ -41,3 +41,25 @@ dialog{background:linear-gradient(160deg,#fff,#eaf7ff);box-shadow:0 25px 100px #
 .bubble.dragging{cursor:grabbing;z-index:30;box-shadow:0 18px 35px #05245450,0 0 25px #c4f6ff45;transition:none}
 .bubble.target{outline:3px solid #efffff;outline-offset:3px;box-shadow:0 0 32px #d5fcff80}
 .compact .bubble{padding:6px}.bubble img{max-width:45%;max-height:35%;width:66px;height:66px}
+
+/* Маленькие рыбки на заднем плане: они никогда не перехватывают жесты. */
+#fish-layer{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+#bubbles{z-index:2;pointer-events:none}#bubbles .bubble{pointer-events:auto}#bubbles .category{pointer-events:none}
+.field-note{z-index:1}
+.fish{position:absolute;left:0;top:0;height:auto;opacity:.7;pointer-events:none;will-change:transform}
+.fish-facing{transition:transform .7s ease;transform-origin:center}
+.fish svg{display:block;width:100%;height:auto;overflow:visible}
+.fish-body{transform-origin:80px 32px;animation:fish-undulate var(--fin-duration) ease-in-out infinite;animation-delay:var(--fin-delay)}
+.fish-rear{transform-origin:80px 32px;animation:fish-rear-sway var(--fin-duration) ease-in-out infinite;animation-delay:var(--fin-delay)}
+.fish-shape,.fish-tail,.fish-dorsal{fill:var(--fish-color);stroke:#e4ffff8c;stroke-width:1}
+.fish-dorsal{opacity:.7}.fish-belly{fill:#f0ffff;opacity:.3}.fish-glint{fill:none;stroke:#fff9;stroke-width:3;stroke-linecap:round}
+.fish-tail{transform-origin:32px 32px;animation:fish-tail-beat var(--fin-duration) ease-in-out infinite;animation-delay:var(--fin-delay)}
+.fish-fin{fill:#ffffff70;stroke:#e4ffff80;stroke-width:1;transform-origin:70px 34px;animation:fish-fin-beat var(--fin-duration) ease-in-out infinite;animation-delay:var(--fin-delay)}
+.fish-gill{fill:none;stroke:#123a5c50;stroke-width:1.4;stroke-linecap:round}
+#fish-layer.paused .fish svg *{animation-play-state:paused}
+@keyframes fish-undulate{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+@keyframes fish-rear-sway{0%,100%{transform:skewY(-5deg)}50%{transform:skewY(5deg)}}
+@keyframes fish-tail-beat{0%,100%{transform:skewY(-16deg) scaleX(.8)}50%{transform:skewY(16deg) scaleX(1)}}
+@keyframes fish-fin-beat{0%,100%{transform:rotate(-12deg) scaleY(.7)}50%{transform:rotate(10deg) scaleY(1)}}
+.compact .fish{width:40px!important;opacity:.5}
+@media(prefers-reduced-motion:reduce){.fish svg *{animation:none!important}.fish-facing{transition:none}}
