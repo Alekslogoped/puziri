@@ -1,1 +1,12 @@
-
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0736a5"><title>Слова в пузырях</title><link rel="stylesheet" href="./styles.css"></head>
+<body>
+<div id="viewport"><main id="scene" aria-label="Игра Слова в пузырях">
+<header><div class="brand"><span class="eyebrow">ИГРАЕМ · ОБЪЕДИНЯЕМ · НАЗЫВАЕМ</span><h1 id="title">Слова в пузырях</h1></div><button id="progress" class="pill">Группы: 0 / 4</button><nav aria-label="Настройки"><button id="rules">Правила</button><button id="sound" aria-pressed="false">Звук: выкл.</button><button id="fullscreen">На весь экран</button></nav></header>
+<section id="field" aria-label="Игровое поле"><div class="water" aria-hidden="true"></div><div class="field-note" aria-hidden="true">У каждого слова есть своя компания</div><div id="bubbles"></div><div id="ghost" hidden></div></section>
+<footer><div class="actions"><button id="undo">Отменить</button><button id="hint">Подсказка</button><button id="restart">Заново</button></div><div id="message" role="status" aria-live="polite">Выбери два подходящих пузыря</div><span id="moves"></span></footer>
+</main></div>
+<dialog id="modal" aria-labelledby="modal-title"><div class="modal-orb" aria-hidden="true"></div><span class="eyebrow">СЛОВА В ПУЗЫРЯХ</span><h2 id="modal-title"></h2><div id="modal-body"></div><div id="modal-actions"></div></dialog>
+<script src="./config.js"></script><script src="./game.js"></script>
+</body></html>
