@@ -321,7 +321,7 @@
   function showVictory() {
     cancelGesture();closeModal();
     const scene=$('win-scene');scene.hidden=false;scene.classList.remove('finished');
-    $('mermaid-swimmer').innerHTML=window.MERMAID_SVG;
+    $('mermaid-swimmer').innerHTML=window.MERMAID_MARKUP;
     // Start from a fresh DOM node so replaying after undo restarts all animations.
     scene.classList.add('celebrating');announce('Все группы собраны! Русалочка поздравляет тебя!');
     $('win-title').focus({preventScroll:true});
