@@ -63,3 +63,27 @@ dialog{background:linear-gradient(160deg,#fff,#eaf7ff);box-shadow:0 25px 100px #
 @keyframes fish-fin-beat{0%,100%{transform:rotate(-12deg) scaleY(.7)}50%{transform:rotate(10deg) scaleY(1)}}
 .compact .fish{width:40px!important;opacity:.5}
 @media(prefers-reduced-motion:reduce){.fish svg *{animation:none!important}.fish-facing{transition:none}}
+
+/* Победа: русалочка вплывает, машет рукой и уплывает. */
+#win-scene{position:absolute;inset:0;z-index:40;overflow:hidden;background:radial-gradient(ellipse at center,#8de8ff12,#07469128);pointer-events:none}
+#win-scene[hidden]{display:none}
+#mermaid-swimmer{position:absolute;left:50%;top:26%;width:560px;max-width:82%;pointer-events:none;filter:drop-shadow(0 10px 15px #05356a20);--travel:1100px}
+#mermaid-swimmer svg{display:block;width:100%;overflow:visible}
+.celebrating #mermaid-swimmer{animation:mermaid-visit 8s cubic-bezier(.35,0,.2,1) forwards}
+.mermaid-tail{animation:mermaid-tail-swish 1.15s ease-in-out infinite}
+.mermaid-fin{animation:mermaid-fin-swish 1.15s ease-in-out infinite}
+.mermaid-hair{transform-origin:432px 80px;animation:mermaid-hair-flow 2s ease-in-out infinite}
+.mermaid-wave{animation:mermaid-greeting 8s ease-in-out forwards}
+.win-message{position:absolute;top:65%;left:0;width:100%;padding:12px;text-align:center;color:white;text-shadow:0 2px 5px #07326a;pointer-events:none}
+.win-message h2{font-size:38px;margin:0 0 8px}.win-message p{font-size:22px;margin:0 0 18px}
+.win-message button{pointer-events:auto;border-radius:18px;padding:14px 24px;margin:4px 6px;font-size:21px;font-weight:700;color:#123d76;background:linear-gradient(#fff,#d9f5ff);box-shadow:0 6px 20px #0434762b}
+#win-undo{font-size:17px;background:#ebf9ffc9}
+#win-title:focus{outline:none}
+.finished #mermaid-swimmer{visibility:hidden}
+@keyframes mermaid-visit{0%{transform:translate(calc(-50% - var(--travel)),20px)}26%{transform:translate(-50%,0)}34%{transform:translate(-50%,-7px)}62%{transform:translate(-50%,0)}70%{transform:translate(-50%,-5px)}100%{transform:translate(calc(-50% + var(--travel)),-18px)}}
+@keyframes mermaid-tail-swish{0%,100%{transform:rotate(-5deg) skewY(-2deg)}50%{transform:rotate(6deg) skewY(3deg)}}
+@keyframes mermaid-fin-swish{0%,100%{transform:rotate(-9deg) scaleY(.95)}50%{transform:rotate(12deg) scaleY(1.05)}}
+@keyframes mermaid-hair-flow{0%,100%{transform:rotate(-1.5deg)}50%{transform:rotate(2deg)}}
+@keyframes mermaid-greeting{0%,26%{transform:rotate(0)}35%{transform:rotate(-72deg)}41%{transform:rotate(-52deg)}47%{transform:rotate(-75deg)}53%{transform:rotate(-52deg)}59%{transform:rotate(-75deg)}70%,100%{transform:rotate(0)}}
+.compact #mermaid-swimmer{top:20%;--travel:550px;width:360px;max-width:94%}.compact .win-message{top:45%}.compact .win-message h2{font-size:26px}.compact .win-message p{font-size:18px}.compact .win-message button{font-size:18px}
+@media(prefers-reduced-motion:reduce){.celebrating #mermaid-swimmer{animation:none;transform:translateX(-50%)}#mermaid-swimmer svg *{animation:none!important}.finished #mermaid-swimmer{visibility:visible}}

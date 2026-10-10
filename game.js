@@ -70,7 +70,7 @@
   const copy = value => JSON.parse(JSON.stringify(value));
   const shuffle = a => { for (let i=a.length-1;i>0;i--) {const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; };
   function later(fn, ms) { const token=generation; const id=setTimeout(() => { timers.delete(id); if(token===generation) fn(); },ms); timers.add(id); }
-  function clearEffects() { generation++; timers.forEach(clearTimeout); timers.clear(); departures.forEach(el=>el.remove()); departures.clear(); cancelGesture(); hintIds=[]; $('bubbles').querySelectorAll('.merge-ring').forEach(el=>el.remove()); }
+  function clearEffects() { generation++; timers.forEach(clearTimeout); timers.clear(); departures.forEach(el=>el.remove()); departures.clear(); cancelGesture(); hintIds=[]; $('bubbles').querySelectorAll('.merge-ring').forEach(el=>el.remove());$('win-scene').hidden=true;$('win-scene').classList.remove('celebrating','finished');$('mermaid-swimmer').replaceChildren(); }
   const measureContext=document.createElement('canvas').getContext('2d');
   function textWidth(text,size) { measureContext.font=`700 ${size}px Arial`;return measureContext.measureText(text).width; }
   function labels(b,category=false) {
@@ -214,7 +214,7 @@
   }
   function checkEnd() {
     if(departures.size || state.live.some(b=>b.locked)) return;
-    if(state.completed.length===config.groups.length && !state.live.length && !state.reserve.length){state.status='won';beep('win');showModal('won');}
+    if(state.completed.length===config.groups.length && !state.live.length && !state.reserve.length){state.status='won';beep('win');showVictory();}
     else if(state.moves!==null && state.moves<=0){state.status='lost';showModal('lost');}
     render();
   }
@@ -318,6 +318,15 @@
     clearEffects();history=[];selected=null;state={status:'playing',live:[],reserve:config.groups.map(g=>g.id),completed:[],completedWords:[],flights:[],moves:config.moveLimit,successes:0};
     closeModal();fillReserve(true);announce('Перетащи подходящий пузырь на другой');render();
   }
+  function showVictory() {
+    cancelGesture();closeModal();
+    const scene=$('win-scene');scene.hidden=false;scene.classList.remove('finished');
+    $('mermaid-swimmer').innerHTML=window.MERMAID_SVG;
+    // Start from a fresh DOM node so replaying after undo restarts all animations.
+    scene.classList.add('celebrating');announce('Все группы собраны! Русалочка поздравляет тебя!');
+    $('win-title').focus({preventScroll:true});
+    later(()=>{scene.classList.add('finished');$('play-again').focus({preventScroll:true});},reduced.matches?100:8000);
+  }
   function collectedList(all=false) {
     const ul=document.createElement('ul');const groups=all?config.groups:config.groups.filter(g=>state.completed.includes(g.id));
     if(!groups.length){const p=document.createElement('p');p.textContent='Здесь появятся собранные группы.';return p;}
@@ -328,7 +337,7 @@
     const titles={rules:'Как играть',won:'Все группы собраны!',lost:'Ходы закончились',collected:'Собрано'};
     $('modal-title').textContent=titles[kind];$('modal-body').replaceChildren();$('modal-actions').replaceChildren();
     if(kind==='rules'){const p=document.createElement('p');p.textContent=rulesText;$('modal-body').append(p);}
-    if(kind==='won'||kind==='collected')$('modal-body').append(collectedList(kind==='won'));
+    if(kind==='collected')$('modal-body').append(collectedList());
     const action=(text,fn)=>{const b=document.createElement('button');b.textContent=text;b.onclick=fn;$('modal-actions').append(b);};
     if(kind==='rules')action(started?'Продолжить':'Играть',()=>{started=true;closeModal();});
     if(kind==='collected')action('Продолжить',closeModal);
@@ -345,6 +354,7 @@
     if(!state)return;
     state.live.forEach(b=>sizeBubble(b));updateFieldHeight();state.live.forEach((b,i)=>{if(was!==compact||compact)placeBubble(b,i);bounds(b);});settle(80);elements.forEach(el=>delete el._visualPosition);render();
   }
+  $('play-again').onclick=restart;$('win-undo').onclick=undo;
   $('undo').onclick=undo;$('hint').onclick=hint;$('restart').onclick=restart;
   $('rules').onclick=()=>showModal('rules');$('progress').onclick=()=>showModal('collected');
   $('sound').onclick=()=>{sound=!sound;beep('select');render();};
