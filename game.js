@@ -91,9 +91,12 @@
     const columns=compact?(width>=maxR*4+24?2:1):7;
     return {columns,step:compact?maxR*2+18:208};
   }
-  function placeBubble(b,i,falling=false) {
+  function placeBubble(b,i,falling=false,total=state.live.length) {
     const {columns,step}=gridMetrics();
-    b.x=width*(i%columns+.5)/columns;
+    const rowStart=Math.floor(i/columns)*columns;
+    const rowCount=Math.min(columns,total-rowStart);
+    const offset=(columns-rowCount)/2;
+    b.x=width*(offset+i%columns+.5)/columns;
     b.y=compact?100+Math.floor(i/columns)*step:falling?b.r+12+Math.floor(i/columns)*step:height-110-Math.floor(i/columns)*step;
   }
   function bubble(g,w) { return {id:`b${++seq}`, groupId:g,wordIds:w,x:0,y:0,vx:0,vy:0,r:radius(w.length,groupMap.get(g).words.filter(word=>w.includes(word.id)).map(word=>word.text)),locked:false}; }
@@ -122,7 +125,7 @@
     }
     shuffle(incoming);
     state.live.push(...incoming);updateFieldHeight();
-    incoming.forEach((b,i)=>placeBubble(b,i,!initial));
+    incoming.forEach((b,i)=>placeBubble(b,i,!initial,incoming.length));
     settle(80);render();invariant();
   }
   function updateFieldHeight() {
