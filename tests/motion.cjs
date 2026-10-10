@@ -1,7 +1,7 @@
 const {chromium}=require(process.env.PLAYWRIGHT_PATH||'/tmp/bubbles-qa/node_modules/playwright');
 const assert=require('node:assert/strict');
 (async()=>{
- const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});require('./fixture.cjs').useOriginalDictionary(browser);
  const page=await browser.newPage({viewport:{width:1280,height:720}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  await page.goto(process.env.GAME_URL||'http://127.0.0.1:8000');

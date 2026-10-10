@@ -2,7 +2,7 @@
 const { chromium } = require(process.env.PLAYWRIGHT_PATH || '/tmp/bubbles-qa/node_modules/playwright');
 const assert = require('node:assert/strict');
 (async()=>{
- const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});require('./fixture.cjs').useOriginalDictionary(browser);
  const page=await browser.newPage({viewport:{width:1280,height:720},reducedMotion:'reduce'});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const base=process.env.GAME_URL || 'http://127.0.0.1:8000';
  const start=async(config)=>{await page.goto(base);if(config){await page.evaluate(config=>{window.GAME_CONFIG=config},config);await page.addScriptTag({url:base+'/game.js'});}await page.getByRole('button',{name:'Играть',exact:true}).click();};
@@ -27,7 +27,7 @@ const assert = require('node:assert/strict');
  await page.locator('#rules').click();await page.screenshot({path:'/tmp/bubbles-rules.png'});await page.getByRole('button',{name:'Продолжить',exact:true}).click();await page.screenshot({path:'/tmp/bubbles-desktop.png'});
  assert.deepEqual(errors,[]);await page.close();
  // Isolated pages with configuration overrides before game.js executes.
- async function scenario(groups,limit=null){const p=await browser.newPage({reducedMotion:'reduce'});p.on('pageerror',e=>errors.push(e.message));await p.route('**/config.js',async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text())+`\nwindow.GAME_CONFIG.groups=${JSON.stringify(groups)};window.GAME_CONFIG.moveLimit=${limit};`});});await p.goto(base);await p.getByRole('button',{name:'Играть',exact:true}).click();return p;}
+ async function scenario(groups,limit=null){const p=await browser.newPage({reducedMotion:'reduce'});p.on('pageerror',e=>errors.push(e.message));await p.route('**/config.js',async route=>{const response=await route.fetch();await route.fulfill({response,body:require('./fixture.cjs').source(await response.text())+`\nwindow.GAME_CONFIG.groups=${JSON.stringify(groups)};window.GAME_CONFIG.moveLimit=${limit};`});});await p.goto(base);await p.getByRole('button',{name:'Играть',exact:true}).click();return p;}
  const groups=Array.from({length:8},(_,i)=>({id:'g'+i,title:'ГРУППА '+i,words:Array.from({length:4},(_,j)=>({id:`w${i}-${j}`,text:`СЛОВО${i}${j}`}))}));
  const p=await scenario(groups);let success=0;
  for(let i=0;i<8;i++){for(let j=1;j<4;j++){const find=t=>p.locator('button.bubble').filter({has:p.locator('span',{hasText:new RegExp('^'+t+'$')})});await find(`СЛОВО${i}0`).press('Enter');await find(`СЛОВО${i}${j}`).press('Enter');await p.waitForTimeout(90);success++;}await p.waitForTimeout(420);if(i===0){await p.locator('#undo').click();assert.equal(await p.locator('button.bubble').count(),14);assert.equal(await p.getByText('СЛОВО40',{exact:true}).count(),0);await p.locator('button.bubble').filter({has:p.getByText('СЛОВО00',{exact:true})}).press('Enter');await p.getByRole('button',{name:'СЛОВО03. 1 из 4',exact:true}).press('Enter');await p.waitForTimeout(450);}}

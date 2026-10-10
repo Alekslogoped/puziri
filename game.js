@@ -17,7 +17,7 @@
       }
     }
     if (!label(c.title,80) || !['word','image-word'].includes(c.mode)) throw Error('Проверьте название игры и mode: word или image-word.');
-    if (!Number.isInteger(c.maxActiveBubbles) || c.maxActiveBubbles < 4 || c.maxActiveBubbles > 16) throw Error('maxActiveBubbles должен быть целым числом от 4 до 16.');
+    if (!Number.isInteger(c.maxActiveBubbles) || c.maxActiveBubbles < 4 || c.maxActiveBubbles > 20) throw Error('maxActiveBubbles должен быть целым числом от 4 до 20.');
     if (c.moveLimit !== null && (!Number.isInteger(c.moveLimit) || c.moveLimit <= 0)) throw Error('moveLimit: null или положительное целое число.');
     if (!Number.isInteger(c.bonusEvery) || c.bonusEvery < 1) throw Error('bonusEvery должен быть положительным целым числом.');
     if (c.scene?.width !== 1600 || c.scene?.height !== 900) throw Error('Базовая сцена должна быть 1600 × 900.');

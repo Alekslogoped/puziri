@@ -1,6 +1,6 @@
 const {chromium}=require(process.env.PLAYWRIGHT_PATH||'/tmp/bubbles-qa/node_modules/playwright');const assert=require('node:assert/strict');
 (async()=>{
-const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});const base=process.env.GAME_URL||'http://127.0.0.1:8000';const errors=[];
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});require('./fixture.cjs').useOriginalDictionary(browser);const base=process.env.GAME_URL||'http://127.0.0.1:8000';const errors=[];
 async function start(options={}){const p=await browser.newPage({viewport:{width:1280,height:720},...options});p.on('pageerror',e=>errors.push(e.message));await p.goto(base);await p.getByRole('button',{name:'Играть',exact:true}).click();await p.waitForTimeout(600);return p;}
 async function checkText(p){const labels=await p.locator('.bubble span').evaluateAll(es=>es.map(e=>{const b=e.closest('.bubble').getBoundingClientRect(),r=e.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(e);return {text:e.textContent,lines:range.getClientRects().length,inside:r.left>=b.left+8&&r.right<=b.right-8,whiteSpace:getComputedStyle(e).whiteSpace};}));assert(labels.every(l=>l.lines===1&&l.inside&&l.whiteSpace==='nowrap'),JSON.stringify(labels.filter(l=>l.lines!==1||!l.inside)));}
 const p=await start({reducedMotion:'reduce'}),word=t=>p.locator('button.bubble').filter({has:p.locator('span',{hasText:new RegExp('^'+t+'$')})});
